@@ -1,0 +1,1234 @@
+---
+title: "SCFA_Spearman_Correlation_Plots"
+author: "Anna Michl"
+date: "2026-01-27"
+output: html_document
+---
+
+Load all packages needed
+```{r, include=TRUE, echo=TRUE, warning=FALSE}
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(ggpubr)  # for stats annotations
+library(dplyr)
+library(ggrepel)
+library(tidyr)
+library(patchwork)
+```
+
+Set working directory (ADJUST TO YOUR PATH TO THE .XLSX FILE)
+```{r, echo=TRUE}
+setwd("Y:/1537-Schwarzer/Anna/")
+path <- "Y:/1537-Schwarzer/Anna/NORWAY_QUANTIFICATION.xlsx/"
+R.version
+```
+################################### L A C T A T E #########################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+lactate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_LACTATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+lactate <- lactate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+lactate <- lactate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+lactate <- lactate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+lactate <- lactate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+lac_res <- cor.test(lactate$NO, lactate$CZ, method = "spearman")
+lac_rho <- round(lac_res$estimate, 3)
+lac_pval <- signif(lac_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(lactate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", lac_rho, "\npval = ", lac_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "LACTATE: normalized rel. peak areas per studied cohorts (%)",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Lactate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Lactate_spearman <-ggplot(lactate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", lac_rho, "\npval = ", lac_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "LACTATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Lactate_spearman_correlation.png",
+       plot = Lactate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ A C E T A T E ###########################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+acetate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ACETATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+acetate <- acetate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+acetate <- acetate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+acetate <- acetate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+acetate <- acetate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+ac_res <- cor.test(acetate$NO, acetate$CZ, method = "spearman")
+ac_rho <- round(ac_res$estimate, 3)
+ac_pval <- signif(ac_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(acetate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  geom_text_repel(
+    data = subset(acetate, GROUP == "SPF"),
+    aes(label = TYPE),
+    size = 3,
+    max.overlaps = Inf,
+    box.padding = 0.6
+  ) +
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", ac_rho, "\npval = ", ac_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ACETATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Acetate_spearman and save it as a figure in .png
+```{r, include=TRUE, echo=TRUE}
+Acetate_spearman<- ggplot(acetate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  #geom_text_repel(
+    #data = subset(acetate, GROUP == "SPF"),
+    #aes(label = TYPE),
+    #size = 3,
+    #max.overlaps = Inf,
+    #box.padding = 0.6
+  #) +
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", ac_rho, "\npval = ", ac_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ACETATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Acetate_spearman_correlation.png",
+       plot = Acetate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+################################# P R O P I O N A T E #####################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+propionate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_PROPIONATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+propionate <- propionate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+propionate <- propionate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+propionate <- propionate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+propionate <- propionate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+pro_res <- cor.test(propionate$NO, propionate$CZ, method = "spearman")
+pro_rho <- round(pro_res$estimate, 3)
+pro_pval <- signif(pro_res$p.value, 3)
+```
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(propionate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", pro_rho, "\npval = ", pro_pval),
+           hjust = 1.8, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "PROPIONATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Propionate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Propionate_spearman <- ggplot(propionate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", pro_rho, "\npval = ", pro_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "PROPIONATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10)
+  )
+ggsave("Propionate_spearman_correlation.png",
+       plot = Propionate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+################################# B U T Y R A T E  ######################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+butyrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_BUTYRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+butyrate <- butyrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+butyrate <- butyrate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+butyrate <- butyrate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+butyrate <- butyrate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+but_res <- cor.test(butyrate$NO, butyrate$CZ, method = "spearman")
+but_rho <- round(but_res$estimate, 3)
+but_pval <- signif(but_res$p.value, 3)
+```
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(butyrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  geom_text_repel(
+    data = subset(butyrate, GROUP == "SPF"),
+    aes(label = TYPE),
+    size = 3,
+    max.overlaps = Inf,
+    box.padding = 0.6
+  ) +
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", but_rho, "\npval = ", but_pval),
+           hjust = 2.3, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "BUTYRATE",
+    x = "Normalized relative peak area NO",
+    y = "Normalized relative peak area CZ")
+```
+
+Assign it to the variable Butyrate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Butyrate_spearman <- ggplot(butyrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  #geom_text_repel(
+    #data = subset(butyrate, GROUP == "SPF"),
+    #aes(label = TYPE),
+    #size = 3,
+    #max.overlaps = Inf,
+    #box.padding = 0.6
+  #) +
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", but_rho, "\npval = ", but_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "BUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Butyrate_spearman_correlation.png",
+       plot = Butyrate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################# I S O B U T Y R A T E ###################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+isobutyrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ISOBUTYRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+isobutyrate <- isobutyrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+isobutyrate <- isobutyrate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+isobutyrate <- isobutyrate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+isobutyrate <- isobutyrate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+isobut_res <- cor.test(isobutyrate$NO, isobutyrate$CZ, method = "spearman")
+isobut_rho <- round(isobut_res$estimate, 3)
+isobut_pval <- signif(isobut_res$p.value, 3)
+```
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(isobutyrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", isobut_rho, "\npval = ", isobut_pval),
+           hjust = 2, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ISOBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+
+```
+
+
+Assign it to the variable Isobutyrate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Isobutyrate_spearman <- ggplot(isobutyrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", isobut_rho, "\npval = ", isobut_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ISOBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)") +
+  theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10)
+  )
+
+ggsave("Isobutyrate_spearman_correlation.png",
+       plot = Isobutyrate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################# V A L E R A T E ###################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+valerate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_VALERATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+valerate <- valerate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+valerate <- valerate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+valerate <- valerate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+valerate <- valerate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+val_res <- cor.test(valerate$NO, valerate$CZ, method = "spearman")
+val_rho <- round(val_res$estimate, 3)
+val_pval <- signif(val_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(valerate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", val_rho, "\npval = ", val_pval),
+           hjust = 2.5, vjust = 1.1,
+           size = 3) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                 labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "VALERATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Valerate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Valerate_spearman <- ggplot(valerate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", val_rho, "\npval = ", val_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                 labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "VALERATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Valerate_spearman_correlation.png",
+       plot = Valerate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+
+
+################################# I S O V A L E R A T E ###################################################
+
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+isovalerate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ISOVALERATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+isovalerate <- isovalerate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+isovalerate <- isovalerate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+isovalerate <- isovalerate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+isovalerate <- isovalerate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+isoval_res <- cor.test(isovalerate$NO, isovalerate$CZ, method = "spearman")
+isoval_rho <- round(isoval_res$estimate, 3)
+isoval_pval <- signif(isoval_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(isovalerate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", isoval_rho, "\npval = ", isoval_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ISOVALERATE/METHYLISOBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Isovalerate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Isovalerate_spearman<- ggplot(isovalerate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", isoval_rho, "\npval = ", isoval_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "ISOVALERATE/METHYLISOBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Isovalerate_spearman_correlation.png",
+       plot = Isovalerate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################# P I V A L A T E ###################################################
+
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+pivalate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_PIVALATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+pivalate <- pivalate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+pivalate <- pivalate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+pivalate <- pivalate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+pivalate <- pivalate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+pival_res <- cor.test(pivalate$NO, pivalate$CZ, method = "spearman")
+pival_rho <- round(pival_res$estimate, 3)
+pival_pval <- signif(pival_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(pivalate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", pival_rho, "\npval = ", pival_pval),
+          hjust = 1.9, vjust = 1.1,
+           size = 3) +
+  scale_x_log10(breaks = c(0.001, 1, 10, 100),
+                labels = c("0.001", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.001, 1, 10, 100),
+                labels = c("0.001", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "PIVALATE/2-METHYLBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Pivalate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Pivalate_spearman <-ggplot(pivalate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", pival_rho, "\npval = ", pival_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.001, 1, 10, 100),
+                labels = c("0.001", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.001, 1, 10, 100),
+                labels = c("0.001", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "PIVALATE/2-METHYLBUTYRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Pivalate_spearman_correlation.png",
+       plot = Pivalate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+
+################################# C I T R A T E ###################################################
+
+
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+citrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_CITRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+citrate <- citrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+citrate <- citrate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+citrate <- citrate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+citrate <- citrate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+cit_res <- cor.test(citrate$NO, citrate$CZ, method = "spearman")
+cit_rho <- round(cit_res$estimate, 3)
+cit_pval <- signif(cit_res$p.value, 3)
+
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(citrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", cit_rho, "\npval = ", cit_pval),
+           hjust = 1.1, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "CITRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Citrate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Citrate_spearman <-ggplot(citrate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", cit_rho, "\npval = ", cit_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "CITRATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Citrate_spearman_correlation.png",
+       plot = Citrate_spearman,
+       width = 10, height = 10, dpi = 300)
+  
+```
+
+
+################################# M A L A T E ###################################################
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+malate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_MALATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+malate <- malate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+malate <- malate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+malate <- malate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+malate <- malate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+mal_res <- cor.test(malate$NO, malate$CZ, method = "spearman")
+mal_rho <- round(mal_res$estimate, 3)
+mal_pval <- signif(mal_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(malate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", mal_rho, "\npval = ", mal_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "MALATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Malate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Malate_spearman<- ggplot(malate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", mal_rho, "\npval = ", mal_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "MALATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Malate_spearman_correlation.png",
+       plot = Malate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################# S U C C I N A T E ###################################################
+
+Import the dataset and exclude blanks
+```{r, include=TRUE, echo=TRUE}
+succinate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_SUCCINATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+
+```
+Filter only valued for replicate1 in the column "Replicate" and exclude samples CV5 and CV6
+```{r, include=TRUE, echo=TRUE}
+succinate <- succinate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Create new column "Group"
+```{r, include=TRUE, echo=TRUE}
+succinate <- succinate %>%
+  mutate(GROUP = sub("_.*", "", COHORT))
+```
+
+Reshape the data matrix and extract only values for plotting
+```{r, include=TRUE, echo=TRUE}
+succinate <- succinate %>%
+  select(TYPE, GROUP, COUNTRY, `MEDIAN_REL_AREA_NORMALIZED`) %>%
+  pivot_wider(
+    names_from = COUNTRY,
+    values_from = `MEDIAN_REL_AREA_NORMALIZED`
+  )
+
+succinate <- succinate %>%
+  mutate(
+    CZ = as.numeric(CZ),
+    NO = as.numeric(NO)
+  )
+```
+
+Add Spearman Correlation test
+```{r, include=TRUE, echo=TRUE}
+succ_res <- cor.test(succinate$NO, succinate$CZ, method = "spearman")
+succ_rho <- round(succ_res$estimate, 3)
+succ_pval <- signif(succ_res$p.value, 3)
+```
+
+Check the correlation plot
+```{r, include=TRUE, echo=TRUE}
+ggplot(succinate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 4,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", succ_rho, "\npval = ", succ_pval),
+           hjust = 1.1, vjust = 1.1,
+           size = 2.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "SUCCINATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")
+```
+
+Assign it to the variable Succinate_spearman and save it as a .png
+```{r, include=TRUE, echo=TRUE}
+Succinate_spearman<-ggplot(succinate, aes(x = NO, y = CZ)) +
+  geom_smooth(method = "lm", linewidth = 0.8, color = "darkgrey") +
+  geom_point(aes(shape = GROUP, fill = GROUP),
+             color = "black",      # border colour for all points
+             size = 3,
+             stroke = 0.5) +       # border thickness
+  theme_pubr() +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Spearman ρ = ", succ_rho, "\npval = ", succ_pval),
+           hjust = 1.9, vjust = 1.1,
+           size = 3.5) +
+  scale_x_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  scale_shape_manual(values = c("Ba" = 21, "GF" = 22, "OMM12" = 23, "SPF" = 24)) +
+  scale_fill_manual(values = c(Ba = "orchid3", GF = "cornflowerblue", OMM12 = "maroon", SPF = "lightblue1")) +
+  labs(
+    title = "SUCCINATE",
+    x = "Normalized relative peak area NO (%)",
+    y = "Normalized relative peak area CZ (%)")+
+    theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    legend.text =  element_text(size = 12)
+  )
+ggsave("Succinate_spearman_correlation.png",
+       plot = Succinate_spearman,
+       width = 10, height = 10, dpi = 300)
+```
+
+```{r, include=TRUE, echo=TRUE}
+combined_plot <-
+  (Lactate_spearman +
+  Acetate_spearman +
+   Propionate_spearman +
+   Butyrate_spearman +
+   Isobutyrate_spearman) +
+   Valerate_spearman +
+   Isovalerate_spearman +
+   Pivalate_spearman +
+   Malate_spearman +
+   Citrate_spearman +
+   Succinate_spearman +
+  plot_layout(
+    ncol = 3,
+    guides = "collect"
+  ) &  
+theme(legend.position = "bottom", legend.text =  element_text(size = 14))
+combined_plot +
+  plot_annotation(
+    title = "Spearman correlations between normalized relative peak areas",
+    subtitle = "Log10-scaled values; points colored by experimental group",
+    theme = theme(
+      axis.title.x = element_text(size = 8),
+      axis.title.y = element_text(size = 8)
+    )
+  )
+```
+
+```{r, include=TRUE, echo=TRUE}
+all<-combined_plot +
+  plot_annotation(
+    #title = "Spearman correlations between normalized relative peak areas",
+    #subtitle = "Log10-scaled values; points colored by experimental group",
+    theme = theme(
+      axis.title.x = element_text(size = 8),
+      axis.title.y = element_text(size = 8)
+    )
+  )
+ggsave("All_spearman_correlation.png",
+       plot = all,
+       width = 10, height = 14, dpi = 300)
+```
+
+```{r, include=TRUE, echo=TRUE}
+```
