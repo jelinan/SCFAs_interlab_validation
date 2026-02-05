@@ -1,0 +1,1202 @@
+---
+title: "SCFA_Boxplots"
+author: "Anna Michl"
+date: "2026-01-27"
+output: html_document
+---
+Load all packages needed
+```{r, include=TRUE, echo=TRUE, warning=FALSE}
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(ggpubr)  # for stats annotations
+library(RColorBrewer)
+library(viridis)
+library(patchwork)
+```
+
+Set working directory (ADJUST TO YOUR PATH TO THE .XLSX FILE)
+```{r, echo=TRUE}
+setwd("C:/Users/annaj/Desktop/SCFAs_interlab_validation")
+R.version
+```
+################################### L A C T A T E #########################################################
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+lactate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_LACTATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+lactate <- lactate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(lactate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+lactate$COHORT <- factor(lactate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+lactate_comparisons <- list(
+  c("Ba_CZ", "OMM12_CZ"),
+  c("Ba_NO", "OMM12_NO"),
+  c("GF_CZ", "Ba_CZ"),
+  c("GF_NO", "Ba_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Select color palette for all the graphs
+```{r, echo=TRUE}
+my_palette_fill <- c("cornflowerblue", "orchid3", "maroon", "lightblue1" ,"cornflowerblue", "orchid3",  "maroon", "lightblue1")
+my_palette_color <- c(
+  "red4", "skyblue4", "navy", "goldenrod2", "darkolivegreen", "darkorange", "salmon", "violet", "lightsalmon3", 
+  "red4", "skyblue4", "goldenrod2", "darkolivegreen", "darkorange", "purple4", "lightyellow", "seagreen3", "indianred", 
+  "red4", "skyblue4", "navy", "goldenrod2", 
+  "red4" , "skyblue4",  "navy", "goldenrod2")
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+lactate <- lactate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+lactate$COHORT <- factor(lactate$COHORT, levels = desired_order)
+lactate$TYPE   <- factor(lactate$TYPE)
+levels(lactate$COHORT)
+levels(lactate$TYPE)
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(lactate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = lactate_comparisons, 
+                     method = "t.test",
+                     p.adjust.method = "BH",
+                     label = "p.signif", 
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+   labs(title = "LACTATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Lactate_boxplots<- ggplot(lactate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = lactate_comparisons, 
+                     method = "t.test",
+                     p.adjust.method = "BH",
+                     label = "p.signif", 
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "LACTATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Lactate_boxplots.png",
+       plot = Lactate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+################################ A C E T A T E ###########################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+acetate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ACETATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+acetate <- acetate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(acetate$TYPE))
+acetate$COHORT <- factor(acetate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+acetate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"),
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "SPF_CZ"),
+  c("Ba_NO", "SPF_NO"),
+  c("GF_CZ", "OMM12_CZ"),
+  c("GF_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+acetate <- acetate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+acetate$COHORT <- factor(acetate$COHORT, levels = desired_order)
+acetate$TYPE   <- factor(acetate$TYPE)
+levels(acetate$COHORT)
+levels(acetate$TYPE)
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(acetate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = acetate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                    p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.9, 3000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ACETATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Acetate_boxplots<- ggplot(acetate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = acetate_comparisons, 
+                     method = "t.test",
+                      p.adjust.method = "BH",
+                     label = "p.signif", 
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.9, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ACETATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+
+ggsave("Acetate_boxplots.png",
+       plot = Acetate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+
+################################ P R O P I O N A T E ######################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+propionate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_PROPIONATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+propionate <- propionate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(propionate$TYPE))
+propionate$COHORT <- factor(propionate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+propionate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"),
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "SPF_CZ"),
+  c("Ba_NO", "SPF_NO"),
+  c("GF_CZ", "OMM12_CZ"),
+  c("GF_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+propionate <- propionate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+propionate$COHORT <- factor(propionate$COHORT, levels = desired_order)
+propionate$TYPE   <- factor(propionate$TYPE)
+levels(propionate$COHORT)
+levels(propionate$TYPE)
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(propionate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = propionate_comparisons, 
+                     method = "t.test",
+                     p.adjust.method = "BH",
+                     label = "p.signif", 
+                     tip.length = 0.0, 
+                     step.increase = 0.05) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 7000)) +
+  theme_classic(base_size = 14) +
+  labs(title = "PROPIONATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Propionate_boxplots<- ggplot(propionate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = propionate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 7000)) +
+  theme_classic(base_size = 14) +
+  labs(title = "PROPIONATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Propionate_boxplots.png",
+       plot = Propionate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ B U T Y R A T E ########################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+butyrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_BUTYRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+butyrate <- butyrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(butyrate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+butyrate$COHORT <- factor(butyrate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+butyrate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+butyrate <- butyrate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+butyrate$COHORT <- factor(butyrate$COHORT, levels = desired_order)
+butyrate$TYPE   <- factor(butyrate$TYPE)    # color
+levels(butyrate$COHORT)
+levels(butyrate$TYPE)
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(butyrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = butyrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.05, 20000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "BUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Butyrate_boxplots<-ggplot(butyrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = butyrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.05, 20000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "BUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Butyrate_boxplots.png",
+       plot = Butyrate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+
+################################ I S O B U T Y R A T E ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+isobutyrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ISOBUTYRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+isobutyrate <- isobutyrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(isobutyrate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+isobutyrate$COHORT <- factor(isobutyrate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+isobutyrate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+isobutyrate <- isobutyrate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+isobutyrate$COHORT <- factor(isobutyrate$COHORT, levels = desired_order)
+isobutyrate$TYPE   <- factor(isobutyrate$TYPE)    # color
+levels(isobutyrate$COHORT)  # should match your fill vector length
+levels(isobutyrate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(isobutyrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = isobutyrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ISOBUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Isobutyrate_boxplots<- ggplot(isobutyrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = isobutyrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.0, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ISOBUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Isobutyrate_boxplots.png",
+       plot = Isobutyrate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ V A L E R A T E  #####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+valerate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_VALERATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+valerate <- valerate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(valerate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+valerate$COHORT <- factor(valerate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+valerate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"),
+  c("Ba_NO", "OMM12_NO"),
+  c("Ba_CZ", "SPF_CZ"),
+  c("Ba_NO", "SPF_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+valerate <- valerate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+valerate$COHORT <- factor(valerate$COHORT, levels = desired_order)
+valerate$TYPE   <- factor(valerate$TYPE)    # color
+levels(valerate$COHORT)  # should match your fill vector length
+levels(valerate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(valerate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = valerate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.05, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+   labs(title = "VALERATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Valerate_boxplots<-ggplot(valerate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = valerate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.05, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+   labs(title = "VALERATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Valerate_boxplots.png",
+       plot = Valerate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ I S O V A L E R A T E ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+isovalerate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_ISOVALERATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+isovalerate <- isovalerate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(isovalerate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+isovalerate$COHORT <- factor(isovalerate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+isovalerate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+isovalerate <- isovalerate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+isovalerate$COHORT <- factor(isovalerate$COHORT, levels = desired_order)
+isovalerate$TYPE   <- factor(isovalerate$TYPE)    # color
+levels(isovalerate$COHORT)  # should match your fill vector length
+levels(isovalerate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(isovalerate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = isovalerate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ISOVALERATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Isovalerate_boxplots<- ggplot(isovalerate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = isovalerate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.5, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "ISOVALERATE/METHYL ISOBUYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Isovalerate_boxplots.png",
+       plot = Isovalerate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ P I V A L A T E  ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+pivalate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_PIVALATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+pivalate <- pivalate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(pivalate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+pivalate$COHORT <- factor(pivalate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+pivalate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+pivalate <- pivalate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+pivalate$COHORT <- factor(pivalate$COHORT, levels = desired_order)
+pivalate$TYPE   <- factor(pivalate$TYPE)    # color
+levels(pivalate$COHORT)  # should match your fill vector length
+levels(pivalate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(pivalate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = pivalate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.1, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "PIVALATE/2-METHYLBUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Pivalate_boxplots<- ggplot(pivalate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = pivalate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.1, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "PIVALATE/2-METHYLBUTYRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Pivalate_boxplots.png",
+       plot = Pivalate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+################################ C I T R A T E ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+citrate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_CITRATE") %>%
+  as.data.frame() %>%
+  mutate(`MEDIAN_REL_AREA_NORMALIZED` = as.numeric(`MEDIAN_REL_AREA_NORMALIZED`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+citrate <- citrate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(citrate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+citrate$COHORT <- factor(citrate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+citrate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+citrate <- citrate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+citrate$COHORT <- factor(citrate$COHORT, levels = desired_order)
+citrate$TYPE   <- factor(citrate$TYPE)    # color
+levels(citrate$COHORT)  # should match your fill vector length
+levels(citrate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(citrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = citrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.1, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "CITRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Citrate_boxplots<-ggplot(citrate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = citrate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(0.1, 5000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "CITRATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Citrate_boxplots.png",
+       plot = Citrate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ M A L A T E ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+malate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_MALATE") %>%
+  as.data.frame() %>%
+  mutate(`conc_mmol/mg` = as.numeric(`conc_mmol/mg`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+malate <- malate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(malate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+malate$COHORT <- factor(malate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+malate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+malate <- malate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+malate$COHORT <- factor(malate$COHORT, levels = desired_order)
+malate$TYPE   <- factor(malate$TYPE)    # color
+levels(malate$COHORT)  # should match your fill vector length
+levels(malate$TYPE)    # should match your color vector length
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(malate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = malate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 2000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "MALATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Malate_boxplots<- ggplot(malate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = malate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 2000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "MALATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Malate_boxplots.png",
+       plot = Malate_boxplots,
+       width = 10, height = 10, dpi = 300)
+```
+
+################################ S U C C I N A T E  ####################################################
+
+Import the dataset and exclude blanks
+```{r, echo=TRUE}
+succinate <- read_excel("NORWAY_QUANTIFICATION.xlsx", sheet = "NEW_SUCCINATE") %>%
+  as.data.frame() %>%
+  mutate(`conc_mmol/mg` = as.numeric(`conc_mmol/mg`)) %>%
+  filter(COHORT != "Blank")  # Remove rows where COHORT is "Blank"
+```
+Filter only values Rep1 in the column replicate and exclude samples CV5 and CV6
+```{r, echo=TRUE}
+succinate <- succinate %>%
+  filter(REPLICATE == "Rep1", !TYPE %in% c("CV5", "CV6"))
+```
+Define color palette
+```{r, echo=TRUE}
+N <- length(unique(succinate$TYPE))
+desired_order <- c("GF_CZ", "Ba_CZ", "OMM12_CZ", "SPF_CZ", "GF_NO", "Ba_NO" , "OMM12_NO", "SPF_NO")
+succinate$COHORT <- factor(succinate$COHORT, levels = desired_order)
+```
+
+Define comparison
+```{r, echo=TRUE}
+succinate_comparisons <- list(
+  c("GF_CZ", "Ba_CZ"), 
+  c("GF_NO", "Ba_NO"),
+  c("Ba_CZ", "OMM12_CZ"), 
+  c("Ba_NO", "OMM12_NO"),
+  c("SPF_CZ", "OMM12_CZ"),
+  c("SPF_NO", "OMM12_NO")
+)
+```
+Remove zero or negative values
+```{r, echo=TRUE}
+succinate <- succinate %>% filter(`MEDIAN_REL_AREA_NORMALIZED` > 0)
+succinate$COHORT <- factor(succinate$COHORT, levels = desired_order)
+succinate$TYPE   <- factor(succinate$TYPE)
+levels(succinate$COHORT)
+levels(succinate$TYPE)
+```
+Visualize the comparison with ggplot
+```{r, echo=TRUE}
+ggplot(succinate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 3, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = succinate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 2000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "SUCCINATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+```
+Save as a variavble
+```{r, echo=TRUE}
+Succinate_boxplots<- ggplot(succinate, aes(x = COHORT, y = `MEDIAN_REL_AREA_NORMALIZED`, fill = COHORT)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA,show.legend = FALSE) +
+  geom_vline(xintercept = 4.5, linetype = "dashed", linewidth = 0.5, color = "darkgrey") +
+  geom_jitter(aes(color = TYPE, shape = COUNTRY), width = 0.2, size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  stat_compare_means(comparisons = succinate_comparisons, 
+                     method = "t.test", 
+                     label = "p.signif",
+                     p.adjust.method = "BH",
+                     tip.length = 0.00, 
+                     step.increase = 0.1) +
+  scale_color_manual(values = my_palette_color) +
+  scale_shape_manual(values = c("CZ" = 16, "NO" = 17)) +
+  scale_fill_manual(values = my_palette_fill) +
+  scale_y_log10(breaks = c(0.1, 1, 10, 100),
+                labels = c("0.1", "1", "10", "100")) +
+  coord_cartesian(ylim = c(1, 2000)) +  # keeps all points in view without dropping
+  theme_classic(base_size = 14) +
+  labs(title = "SUCCINATE", y = "Normalized relative peak area (%)")+
+   theme(
+    plot.title   = element_text(size = 12, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 11, colour = "black"),
+    axis.text.x  = element_text(size = 10, face = "bold", angle = 45, hjust = 1, colour = "black"),
+    axis.text.y  = element_text(size = 10, colour = "black")
+  )
+ggsave("Succinate_boxplots.png",
+       plot = Succinate_boxplots,
+       width = 10, height = 10, dpi = 300)
+
+```
+
+################################ S U M M A R Y  ####################################################
+
+```{r, echo=TRUE}
+combined_plot <-
+  (Lactate_boxplots +
+   Acetate_boxplots +
+   Propionate_boxplots +
+   Butyrate_boxplots +
+   Isobutyrate_boxplots) +
+   Valerate_boxplots +
+   Isovalerate_boxplots +
+   Pivalate_boxplots +
+   Malate_boxplots +
+   Citrate_boxplots +
+   Succinate_boxplots   +
+   plot_layout(
+    ncol = 3,
+    guides = "collect"
+  )
+combined_plot +
+  plot_annotation(
+    title = "Boxplots showing differences between cohorts in both CZ and NO results with statistical Anova test ",
+    subtitle = "Log10-scaled values; points colored by experimental group",
+    theme = theme(
+      axis.title.x = element_text(size = 8),
+      axis.title.y = element_text(size = 8)
+    )
+  )
+```
+
+```{r, echo=TRUE}
+all<-combined_plot +
+  plot_annotation(
+    #title = "Boxplots of cohort results from Czech (CZ) and Norwegian (NO) laboratories with ANOVA testing",
+    #subtitle = "Log10-scaled values; points colored by biological replicates",
+    theme = theme(
+      axis.title.x = element_text(size = 8),
+      axis.title.y = element_text(size = 8)
+    )
+  )
+ggsave("All_boxplots.png",
+       plot = all,
+      width = 10, height = 14, dpi = 300)
+```
+
+```{r, echo=TRUE}
+```
+
+
